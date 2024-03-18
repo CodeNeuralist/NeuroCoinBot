@@ -128,5 +128,44 @@ def balance(message):
     else:
         bot.reply_to(message, "😔 У вас нет аккаунта в нашем банке.")
 
+@bot.message_handler(commands=['transfer'])
+def process_transfer(message):
+    try:
+        parts = message.text.split(' ')
+        recipient_id = parts[1]
+        amount = float(parts[2])
+
+        user_id = str(message.from_user.id)
+        data = load_data()
+
+        if user_id not in data:
+            bot.reply_to(message, "😔 У вас нет счета в нашем банке.")
+            return
+
+        if amount <= 0:
+            bot.reply_to(message, "⚠️ Сумма перевода должна быть положительной.")
+            return
+
+        if data[user_id]['balance'] < amount:
+            bot.reply_to(message, "😔 Недостаточно средств на счете.")
+            return
+
+        recipient_data = data.get(recipient_id)
+
+        if not recipient_data:
+            bot.reply_to(message, "😔 Пользователь с указанным ID не найден.")
+            return
+
+        data[user_id]['balance'] -= amount
+        recipient_data['balance'] += amount
+        save_data(data)
+
+        bot.reply_to(message, f"✅ Вы успешно перевели {amount} NeuroCoin пользователю с ID {recipient_id}. Ваш текущий баланс: {data[user_id]['balance']} NeuroCoin")
+
+        notify_user(recipient_id, amount)
+    except (IndexError, ValueError):
+        bot.reply_to(message, "❌ Неверный формат ввода. Пожалуйста, введите ID пользователя и сумму для перевода в правильном формате: /transfer [id пользователя] [сумма]")
+
+
 if __name__ == '__main__':
     bot.polling()
